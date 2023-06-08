@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator
 
 
 ## 1d example
@@ -28,6 +30,7 @@ def calculate_extinction(objects, domain, detail):
         y[idx] = element.transparency
     return x, y
 
+# maybe use pos mask + ordered alpha values to calculate this instead
 def calculate_transmittance(objects, domain, detail):
     x = np.linspace(domain[0], domain[1], detail)
     y = np.ones(shape=detail)
@@ -118,22 +121,65 @@ def plot_object_energy(objects, p, q, l, r, detail):
     fig.tight_layout()
     plt.show()
 
-
+# maybe work with a position mask for the object -> n-hot vector -> avoid redundant calculation
+# position doesnt matter -> order does
 DOMAIN = 0, 4
 DETAIL = 100
 objects = [
     Object(position=1, importance=0.2, transparency=0.5),
     Object(position=2, importance=0.5, transparency=0.5),
-    Object(position=3, importance=0.2, transparency=0.5),
+    #Object(position=3, importance=0.2, transparency=0.5),
 ]
 extinction = calculate_extinction(objects, DOMAIN, DETAIL)
 transmittance = calculate_transmittance(objects, DOMAIN, DETAIL)
 optical_depth = calculate_optical_depth(objects, DOMAIN, DETAIL)
-plot_extinction_transmittance_optical_depth(extinction, transmittance, optical_depth)
+#plot_extinction_transmittance_optical_depth(extinction, transmittance, optical_depth)
 
 
 P = 1
 Q = 50
 LAMBDA = 3
 R = 100
-plot_object_energy(objects, P, Q, LAMBDA, R, DETAIL)
+#plot_object_energy(objects, P, Q, LAMBDA, R, DETAIL)
+
+
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+
+# idea make transmitance energy function -> vector field function 
+# -> input vector of transparencies
+# -> output vector of transmittance * importance
+# -> optimization -> find longest arrow in the field
+
+# Make data.
+X = np.linspace(0, 1, DETAIL)
+Y = np.linspace(0, 1, DETAIL)
+X, Y = np.meshgrid(X, Y)
+
+Z = np.zeros(shape=(DETAIL, DETAIL))
+
+i1 = 0.2
+i2 = 1
+for x in range(DETAIL):
+    for y in range(DETAIL):
+        Z[y][x] = (1 - X[y][x]) * (1 - Y[y][x])  * i2
+
+min_z = Z.argmin()
+min_val = Z.min()
+max_val = Z.max()
+
+
+
+# Plot the surface.
+surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
+                       linewidth=0, antialiased=False)
+
+# Customize the z axis.
+#ax.set_zlim(-0.5, 0.5)
+ax.zaxis.set_major_locator(LinearLocator(10))
+# A StrMethodFormatter is used automatically
+ax.zaxis.set_major_formatter('{x:.02f}')
+
+# Add a color bar which maps values to colors.
+fig.colorbar(surf, shrink=0.5, aspect=5)
+
+plt.show()
